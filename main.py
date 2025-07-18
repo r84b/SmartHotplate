@@ -7,7 +7,6 @@ from sensor_controller import SensorController
 from pid import TakahashiPID
 import uasyncio as asyncio
 import utime
-import uasyncio as asyncio
 import web_interface
 
 # Start WiFi connectie in de achtergrond

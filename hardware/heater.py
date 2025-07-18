@@ -53,6 +53,8 @@ class HeaterControl:
             heater.disable()
             print(f"Overheating: {temp_plate}")
             return
+        
+  
 
         if self.waiting and self.target_temp - 1 < current_temp < self.target_temp + 1:
             self.buzzer.target_reached()
@@ -64,6 +66,8 @@ class HeaterControl:
         raw_power = self.pid.compute(self.target_temp, current_temp, dt)
         power = round(raw_power / 10, 1)
 
+        if self.safety_sensor() > 150:
+            power_limit = 0
         if error > 15:
             power_limit = 1.0
         elif 10 < error <= 15:
