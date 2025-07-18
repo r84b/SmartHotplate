@@ -1,72 +1,101 @@
-import time
-
 class HeaterControl:
-    def __init__(self, temp_reader, buzzer=None):
-        self._read_temp = temp_reader
+    def __init__(self, temp_sensor, safety_sensor, buzzer, triac_pin=2, overtemp=200.0):
+        self._sensor = temp_sensor
+        self._safety = safety_sensor
         self._buzzer = buzzer
-        self._enabled = False
-        self._target_temp = 0.0
-        self._last_update = time.ticks_ms()
-        self._integral = 0.0
-        self._last_error = 0.0
-        self._output = 0.0
 
-        # PID constants
-        self.kp = 2.0
-        self.ki = 0.1
-        self.kd = 0.05
+        self._enabled = True
+        self._target_temp = 0
+        self._target_hit = False
+        self._power_percent = 0.0
 
-        # Heater output interface, e.g. PWM pin or relay control
-        self.heater_pin = machine.Pin(5, machine.Pin.OUT)
+        self._error_message = None
+        self._failsafe_active = False
+
+        self._last_temp = None
+        self._failsafe_timer = 0
+
+        self._pid = TakahashiPID(1.514, 44, 11)
+        self._overtemp = overtemp
+
+        self.hw = HeaterHardware(triac_pin)
 
     def enable(self):
         self._enabled = True
-        if self._buzzer:
-            self._buzzer.beep(1)
+        self._failsafe_active = False
+        self._error_message = None
+        self._failsafe_timer = 0
 
-    def disable(self):
+    def disable(self, reason="unknown"):
         self._enabled = False
-        self._output = 0.0
-        self.heater_pin.off()
+        self._error_message = reason
+        self.hw.off()
 
     def set_target_temp(self, temp):
         self._target_temp = temp
+        self._target_hit = False
 
-    def current_temp(self):
-        return self._read_temp()
-
-    def update(self):
-        if not self._enabled:
-            self.heater_pin.off()
+    def update(self, dt):
+        if not self._enabled or self._failsafe_active:
+            self._power_percent = 0
             return
 
-        now = time.ticks_ms()
-        dt = (time.ticks_diff(now, self._last_update)) / 1000.0
-        if dt <= 0.0:
-            return
+        temp = self._sensor()
 
-        self._last_update = now
-        current = self.current_temp()
-        error = self._target_temp - current
+        if temp >= 100:
+            self.disable("Overheat")
 
-        # PID calculation
-        self._integral += error * dt
-        derivative = (error - self._last_error) / dt
-        self._last_error = error
+        if self._target_temp - 1 < temp < self._target_temp + 1 and not self._target_hit:
+            self._buzzer.target_reached()
+            self._target_hit = True
 
-        output = (self.kp * error) + (self.ki * self._integral) + (self.kd * derivative)
-        output = max(0.0, min(output, 1.0))  # Clamp between 0-1
-        self._output = output
+        error = self._target_temp - temp
+        raw_power = self._pid.compute(self._target_temp, temp, dt)
+        scaled = round(raw_power / 10, 1)
 
-        # Apply output
-        self._apply_output(output)
-
-    def _apply_output(self, duty):
-        # Simple on/off control; replace with PWM or burst logic if needed
-        if duty > 0.5:
-            self.heater_pin.on()
+        if self._safety() >= 150:
+            limit = 0.0
+        elif error > 15:
+            limit = 1.0
+        elif 10 < error <= 15:
+            limit = 0.7
+        elif 5 < error <= 10:
+            limit = 0.5
+        elif 1 < error <= 5:
+            limit = 0.2
         else:
-            self.heater_pin.off()
+            limit = 0.0
 
-    def is_at_temp(self, threshold=0.5):
-        return abs(self._target_temp - self.current_temp()) <= threshold
+        self._power_percent = min(scaled, limit)
+        self.hw.set_power(self._power_percent)
+
+    def get_status(self):
+        return {
+            "enabled": self._enabled,
+            "power_percent": self._power_percent,
+            "failsafe": self._failsafe_active,
+            "error": self._error_message,
+        }
+
+    async def monitor_failsafe(self):
+        CHECK = 5
+        TIMEOUT = 60
+        while True:
+            await asyncio.sleep(CHECK)
+            if not self._enabled:
+                continue
+            temp = self._sensor()
+            if self._last_temp is None:
+                self._last_temp = temp
+                continue
+            if temp > self._last_temp + 0.2:
+                self._last_temp = temp
+                self._failsafe_timer = 0
+            else:
+                self._failsafe_timer += CHECK
+            if self._failsafe_timer >= TIMEOUT:
+                self._failsafe_active = True
+                self.disable("No temperature rise")
+
+    async def pwm_burst_loop(self):
+        await self.hw.burst_pwm_driver(lambda: self._power_percent, self._safety, self._overtemp, self.disable)
