@@ -11,9 +11,6 @@ from phases.heat_to import HeatTo
 from phases.hold_temp import HoldTemp
 from phases.stir_for import StirFor
 
-# Start WiFi connectie in de achtergrond
-asyncio.create_task(web_interface.connect_wifi())
-
 buzzer = Buzzer(16)
 sensors = SensorController()
 heater = HeaterControl(sensors.sensor_plate.read_temperature, buzzer)
@@ -25,6 +22,11 @@ engine = PhaseEngine(context)
 engine.add_phase(HeatTo(context, 65.0))
 engine.add_phase(HoldTemp(context, 65.0, duration=180))
 engine.add_phase(StirFor(context, rpm=500, duration=300))
+
+# Start WiFi connectie in de achtergrond
+asyncio.create_task(web_interface.connect_wifi())
+asyncio.create_task(heater.pwm_burst_loop())
+#asyncio.create_task(heater.monitor_failsafe())
 
 web_interface.set_context(context)
 
