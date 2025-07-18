@@ -31,5 +31,6 @@ web_interface.set_context(context)
 # Execution loop
 while True:
     engine.update()
+    context.update_all()
     display.update(context)
     sleep(0.5)
