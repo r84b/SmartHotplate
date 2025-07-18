@@ -21,7 +21,7 @@ class PT1000Sensor:
         return sorted_means[m] if n % 2 == 1 else (sorted_means[m - 1] + sorted_means[m]) / 2
 
     def read_voltage(self):
-        _ = [self.adc.read_u16() for _ in range(5)]  # weggooien
+        _ = [self.adc.read_u16() for _ in range(5)]  # discard initial noise
         raw_values = [self.adc.read_u16() for _ in range(128)]
         avg = self._median_of_group_means(raw_values, group_size=16)
         v = (avg / 65535) * self.v_ref
@@ -48,16 +48,11 @@ class PT1000Sensor:
         return temp
 
     def update(self):
-        
         sample = self.read_temperature()
-        
-        if not sample:
+        if sample is None:
             self.current_temp = None
             return None
-        
         self.history.append(sample)
-
         if len(self.history) > 5:
             self.history.pop(0)
-        
         self.current_temp = round(sum(self.history) / len(self.history), 1)
