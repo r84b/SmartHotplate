@@ -52,6 +52,7 @@ class PT1000Sensor:
         sample = self.read_temperature()
         
         if not sample:
+            self.current_temp = None
             return None
         
         self.history.append(sample)

@@ -19,7 +19,8 @@ class SensorController:
         self.external_temp = self.sensor_external.current_temp
         
             
-        if self.external_temp:
-            self.active_temp = self.external_temp
-        else:
+        if self.external_temp is None:
             self.active_temp = self.plate_temp
+        else:
+            self.active_temp = self.external_temp
+            

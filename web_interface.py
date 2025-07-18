@@ -3,16 +3,28 @@ import uasyncio as asyncio
 import json
 import hashlib
 import binascii
+import settings
+import api
+
+
+context = {}  # ontvangt externe verwijzingen zoals main.heater
+
+def set_context(obj):
+    global context
+    context = obj
+    api.set_context(obj)
 
 # === WiFi Config ===
-SSID = ""
-PASSWORD = ""
+wifi_config = settings.load_settings()["parameters"]["wifi"]
+SSID = wifi_config["ssid"]
+PASSWORD = wifi_config["pass"]
 
-system_state = None
-ui_state = None
 websocket_clients = []
+wlan = None
 
 async def connect_wifi():
+    global wlan
+    
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
     wlan.connect(SSID, PASSWORD)
@@ -28,16 +40,6 @@ async def connect_wifi():
         print("WiFi connected:", wlan.ifconfig())
     else:
         print("WiFi connection failed after timeout.")
-
-
-def init(state_ref, ui_ref):
-    """Initialize with references to external state objects"""
-    global system_state, ui_state
-    system_state = state_ref
-    ui_state = ui_ref
-    print(f"Web interface initialized with state references")
-    print(f"System state: {system_state}")
-    print(f"UI state: {ui_state}")
 
 html_body = """\
 <!DOCTYPE html>
@@ -287,12 +289,15 @@ async def serve(reader, writer):
                 return
             else:
                 print("No WebSocket key found!")
-        
+                
+        if await api.handle_requests(path, writer, method, headers, reader):
+            return
+ 
         # Regular HTTP request
         if path == "/" or path == "":
             response = "HTTP/1.1 200 OK\r\n"
-            response += "Content-Type: text/html\r\n"
-            response += f"Content-Length: {len(html_body)}\r\n"
+            response += "Content-Type: text/html; charset=utf-8\r\n"
+            f"Content-Length: {len(html_body.encode('utf-8'))}\r\n"
             response += "Connection: close\r\n"
             response += "\r\n"
             response += html_body
@@ -325,10 +330,10 @@ async def broadcast_status():
     """Broadcast status to all connected WebSocket clients"""
     while True:
         try:
-            if websocket_clients and system_state:
+            if websocket_clients:
                 status_data = {
-                    "temp": system_state.get("measured_temp", 0.0),
-                    "rpm": system_state.get("measured_rpm", 0)
+                    "temp": context["sensors"].active_temp,
+                    "rpm": context["stirrer"].rpm
                 }
                 message = json.dumps(status_data)
                 frame = create_websocket_frame(message)
@@ -389,7 +394,6 @@ if __name__ == "__main__":
     ui_state = {"mode": "auto", "target_temp": 0.0}
     
     # Geef referenties door aan web interface
-    init(system_state, ui_state)
     connect_wifi()
     
     # Start server in background

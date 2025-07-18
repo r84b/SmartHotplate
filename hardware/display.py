@@ -1,9 +1,9 @@
 from machine import I2C, Pin
-import sh1106
+import hardware.sh1106
 import time
 
 i2c = I2C(0, scl=Pin(21), sda=Pin(20))
-oled = sh1106.SH1106_I2C(128, 64, i2c)
+oled = hardware.sh1106.SH1106_I2C(128, 64, i2c)
 oled.rotate(True)
 
 
@@ -48,7 +48,7 @@ def hello():
     oled.show()
 
     
-def update(temp_plate, temp_external, temp_target, power, rpm, target_rpm):
+def update(temp_plate, temp_external, temp_target, power, rpm, target_rpm, wlan):
     oled.fill(0)
     
     oled.text("Plate: {:.1f}C".format(temp_plate), 0, 0)
@@ -61,6 +61,7 @@ def update(temp_plate, temp_external, temp_target, power, rpm, target_rpm):
     
     oled.text("Target: {:.1f}C".format(temp_target), 0, 20)
     oled.text(f"Rpm: {rpm:.0f}/{target_rpm:.0f}", 0, 40)
+    oled.text(f"{wlan.ifconfig()[0]}", 0, 50)
     
     # Power bar direct naast "Power:"
     label_x = 0

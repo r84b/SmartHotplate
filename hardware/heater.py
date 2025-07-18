@@ -103,7 +103,7 @@ class HeaterControl:
                 power = self._power_percent
                 steps_on = int(power  * TOTAL_STEPS)
                 steps_off = TOTAL_STEPS - steps_on
-                print(f"burst on/off {steps_on} {steps_off}")
+                #print(f"burst on/off {steps_on} {steps_off}")
                 # Aan-fase
                 for _ in range(steps_on):
                     self.triac.on()

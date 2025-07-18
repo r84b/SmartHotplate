@@ -316,3 +316,4 @@ class SH1106_SPI(SH1106):
 
     def reset(self, res=None):
         super().reset(self.res)
+

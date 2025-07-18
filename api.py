@@ -1,86 +1,76 @@
-import network
-import picoweb
-import ujson
-import uasyncio as asyncio
-from ujson import dumps
+import json
 
-sensors = None  # globale placeholder
+context = {}  # ontvangt externe verwijzingen zoals main.heater
 
-def init(sensor_ref):
-    global sensors
-    sensors = sensor_ref
-    print("[API] sensors gekoppeld:", sensors)
+def set_context(obj):
+    global context
+    context = obj
 
-# ✅ Async WiFi connectie
-async def connect_wifi(ssid="", password=""):
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-    wlan.connect(ssid, password)
 
-    print("Connecting to WiFi...")
-    for i in range(30):  # 30s timeout
-        if wlan.isconnected():
-            print("Connected:", wlan.ifconfig())
+async def handle_requests(path, writer, method, headers, reader):
+    
+    async def send_json_response(data, label):
+        body = json.dumps(data)
+        response = "HTTP/1.1 200 OK\r\n"
+        response += "Content-Type: application/json\r\n"
+        response += f"Content-Length: {len(body)}\r\n"
+        response += "Connection: close\r\n"
+        response += "\r\n"
+        response += body
+        print(f"Serving {label} endpoint")
+        writer.write(response.encode())
+        await writer.drain()
+        
+    async def read_plain_body():
+        length = int(headers.get("content-length", "0"))
+        if length > 0:
+            raw = await reader.read(length)
+            return raw.decode().strip()
+        return ""
+        
+    if path == "/temp" and method == "GET":
+        await send_json_response({"plate": context["sensors"].plate_temp, "external": context["sensors"].external_temp}, "/temp")
+        return True
+
+    if path == "/setpoint" and method == "GET":
+        await send_json_response({"setpoint": context["heater"].target_temp}, "/setpoint")
+        return True
+    
+    if path == "/setpoint" and method == "POST":
+        try:
+            body = await read_plain_body()
+            context["heater"].set_target_temp(float(body))
+            print(f"Updated setpoint to {context["heater"].target_temp}")
+            await send_json_response(
+                {"setpoint": context["heater"].target_temp},
+                "/setpoint POST"
+            )
             return True
-        await asyncio.sleep(1)
-    print("Failed to connect to WiFi.")
+        except Exception as e:
+            print("POST parse error:", e)
+            response = "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"
+            writer.write(response.encode())
+            await writer.drain()
+            return True
+
+    if path == "/target_rpm" and method == "GET":
+            await send_json_response({"setpoint": context["stirrer"].target_rpm}, "/setpoint")
+            return True
+        
+    if path == "/target_rpm" and method == "POST":
+        try:
+            body = await read_plain_body()
+            context["stirrer"].set_target_rpm(int(body))
+            print(f"Updated target RPM to {context["stirrer"].target_rpm}")
+            await send_json_response(
+                {"setpoint": context["stirrer"].target_rpm},
+                "/setpoint POST"
+            )
+            return True
+        except Exception as e:
+            print("POST parse error:", e)
+            response = "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"
+            writer.write(response.encode())
+            await writer.drain()
+            return True 
     return False
-
-# 🌐 WebApp
-app = picoweb.WebApp(__name__)
-status = {"led": False, "temp": 25.5}
-
-@app.route("/")
-def index(req, resp):
-    yield from picoweb.start_response(resp)
-    yield from resp.awrite("Welcome to the Pico API!")
-
-@app.route("/status")
-def api_status(req, resp):
-    yield from picoweb.start_response(resp, "application/json")
-    yield from resp.awrite(ujson.dumps(status))
-    
-@app.route("/temp", methods=["GET"])
-def api_temp_get(req, resp):
-    yield from picoweb.start_response(resp, "application/json")
-    try:
-        temp = sensors.active_temp  # zorg dat dit een float is
-    except:
-        temp = 0.0  # fallback als sensors nog niet klaar is
-
-    yield from resp.awrite(dumps({"temp": round(temp, 2)}))
-
-@app.route("/temp", methods=["POST"])
-def api_temp_set(req, resp):
-    print(req, resp)
-    yield from req.read_form_data()
-    form = req.form
-
-    try:
-        if b"value" in form:
-            setpoint = float(form[b"value"])
-            status["temp"] = setpoint
-            print("[API] Nieuwe setpoint:", setpoint)
-            result = {"ok": True, "setpoint": setpoint}
-        else:
-            result = {"ok": False, "error": "Missing 'value'"}
-    except Exception as e:
-        result = {"ok": False, "error": str(e)}
-
-    yield from picoweb.start_response(resp, "application/json")
-    yield from resp.awrite(ujson.dumps(result))
-
-
-
-# 🚀 Async main()
-async def start():
-    connected = await connect_wifi()
-    if not connected:
-        return
-    await asyncio.sleep(1)
-    app.run(debug=True, host="0.0.0.0", port=80)
-    
-def main():
-    app.run(debug=True, host="0.0.0.0", port=80)
-    
-main()

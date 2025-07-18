@@ -62,7 +62,10 @@ class StirrerController:
 
         # Pas toe
         self.duty += adjustment
-        self.duty = max(0.0, min(1.0, self.duty))  # houd binnen bereik
+        self.duty = max(0.2, min(1.0, self.duty))  # houd binnen bereik
+        
+        if self.target_rpm == 0:
+            self.duty = 0.0
 
         self.set_duty(self.duty)
 
