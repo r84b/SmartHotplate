@@ -10,15 +10,15 @@ class HoldTemp(Phase):
 
     def start(self):
         super().start()
+        self.context.set_target_temp(self.target)
+        self.context.heat_on()
         self.start_time = time.time()
 
     def update(self):
         if time.time() - self.start_time >= self.duration:
             self.context.heat_off()
+            self.context.buzz_target_reached()
             self.state = PhaseResult.COMPLETE
             return PhaseResult.COMPLETE
-        current = self.context.read_temp()
-        if current < self.target:
-            self.context.heat_on()
-        else:
-            self.context.heat_off()
+
+        return PhaseResult.RUNNING
