@@ -11,7 +11,7 @@ from interfaces.ui_state_manager import UIStateManager
 from interfaces.web_interface import WebInterface
 from services import settings 
 import asyncio
-import view
+from view.view import View
 
 # Phases
 from phases.heat_to import HeatTo
@@ -22,8 +22,9 @@ buzzer = BuzzerController(16)
 sensors = SensorController()
 heater = HeaterController(buzzer, 2)
 stirrer = StirrerController(1, 22)
-display = DisplayController(scl_pin=21, sda_pin=22)  # or whatever your SH1106 wrapper is called
+display = DisplayController(scl_pin=21, sda_pin=20)  # or whatever your SH1106 wrapper is called
 context = ProcessContext(heater, stirrer, sensors, buzzer)
+view = View(display)
 web_interface = WebInterface(context)
 
 
