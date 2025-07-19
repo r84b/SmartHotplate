@@ -4,8 +4,8 @@ import time
 
 
 class DisplayController:
-    def __init__(self):
-        self.i2c = I2C(0, scl=Pin(21), sda=Pin(20))
+    def __init__(self, scl_pin, sda_pin):
+        self.i2c = I2C(0, scl=Pin(scl_pin), sda=Pin(sda_pin))
         self.oled = SH1106_I2C(128, 64, self.i2c)
         self.oled.rotate(True)
         self.width = 128
