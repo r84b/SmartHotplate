@@ -1,4 +1,4 @@
-from .base import Phase, PhaseResult
+from phases.base import Phase, PhaseResult
 
 class HeatTo(Phase):
     def __init__(self, context, target_temp):
@@ -13,7 +13,7 @@ class HeatTo(Phase):
     def update(self):
         current = self.context.read_temp()
         if current is None:
-            return PhaseResult.RUNNING
+            return PhaseResult.HOLD  # of alternatief, zie toelichting onder
 
         if current >= self.target:
             self.context.heat_off()
@@ -21,4 +21,4 @@ class HeatTo(Phase):
             self.state = PhaseResult.COMPLETE
             return PhaseResult.COMPLETE
 
-        return PhaseResult.RUNNING
+        return PhaseResult.HOLD  # Gebruik HOLD als 'running' equivalent

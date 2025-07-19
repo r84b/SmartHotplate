@@ -51,6 +51,9 @@ class StirrerController:
 
         self.hw.set_pwm_duty(self.duty)
 
+    def get_target_rpm(self):
+        return self.target_rpm
+
     def set_target_rpm(self, rpm):
         if rpm == 0:
             rpm = 0

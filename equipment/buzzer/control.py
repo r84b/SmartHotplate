@@ -1,7 +1,7 @@
 from equipment.buzzer.hardware import BuzzerHardware
 import time
 
-class Buzzer:
+class BuzzerController:
     def __init__(self, pin):
         self.hw = BuzzerHardware(pin)
 

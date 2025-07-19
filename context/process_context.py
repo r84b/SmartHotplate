@@ -1,16 +1,19 @@
-from equipment.heater_control import HeaterControl
+from equipment.buzzer.control import BuzzerController
+from equipment.heater.control import HeaterController
+from equipment.sensor.control import SensorController
 from equipment.stirrer.control import StirrerController
-from equipment.buzzer.control import Buzzer
-from equipment.sensors.control import SensorController
 
 class ProcessContext:
-    def __init__(self, heater: HeaterControl, stirrer: StirrerController, sensors: SensorController, buzzer: Buzzer):
+    def __init__(self, heater: HeaterController, stirrer: StirrerController, sensors: SensorController, buzzer: BuzzerController):
         self.heater = heater
         self.stirrer = stirrer
         self.sensors = sensors
         self.buzzer = buzzer
 
     # Heater interface
+    def get_target_temp(self):
+        return self.heater.get_target_temp()
+        
     def set_target_temp(self, t):
         self.heater.set_target_temp(t)
 
@@ -19,10 +22,16 @@ class ProcessContext:
 
     def heat_off(self):
         self.heater.disable()
+    
+    def get_power(self):
+        return self.heater.get_power()
 
     # Stirrer interface
     def set_target_rpm(self, rpm):
         self.stirrer.set_target_rpm(rpm)
+        
+    def get_target_rpm(self):
+        return self.stirrer.get_target_rpm()
 
     def stop_stirrer(self):
         self.stirrer.stop()
@@ -67,6 +76,8 @@ class ProcessContext:
 
     # System update
     def update_all(self):
-        self.heater.update()
-        self.stirrer.update()
         self.sensors.update()
+        self.stirrer.update()
+        self.heater.update(self.read_temp(), self.read_plate_temp())
+        
+        

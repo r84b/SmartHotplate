@@ -1,4 +1,4 @@
-from .base import Phase, PhaseResult
+from phases.base import Phase, PhaseResult
 import time
 
 class HoldTemp(Phase):

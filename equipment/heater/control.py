@@ -1,7 +1,9 @@
-class HeaterControl:
-    def __init__(self, temp_sensor, safety_sensor, buzzer, triac_pin=2, overtemp=200.0):
-        self._sensor = temp_sensor
-        self._safety = safety_sensor
+from utils.pid import TakahashiPID
+from equipment.heater.hardware import HeaterHardware
+import time
+
+class HeaterController:
+    def __init__(self, buzzer, triac_pin=2, overtemp=200.0):
         self._buzzer = buzzer
 
         self._enabled = True
@@ -13,6 +15,7 @@ class HeaterControl:
         self._failsafe_active = False
 
         self._last_temp = None
+        self._last_update_ms = time.ticks_ms()
         self._failsafe_timer = 0
 
         self._pid = TakahashiPID(1.514, 44, 11)
@@ -34,14 +37,19 @@ class HeaterControl:
     def set_target_temp(self, temp):
         self._target_temp = temp
         self._target_hit = False
+        
+    def get_target_temp(self):
+        return self._target_temp
 
-    def update(self, dt):
+    def update(self, temp, plate_temp):
         if not self._enabled or self._failsafe_active:
             self._power_percent = 0
             return
 
-        temp = self._sensor()
-
+        now = time.ticks_ms()
+        dt = time.ticks_diff(now, self._last_update_ms) / 1000.0
+        self._last_update_ms = now
+        
         if temp >= 100:
             self.disable("Overheat")
 
@@ -53,7 +61,7 @@ class HeaterControl:
         raw_power = self._pid.compute(self._target_temp, temp, dt)
         scaled = round(raw_power / 10, 1)
 
-        if self._safety() >= 150:
+        if plate_temp >= 150:
             limit = 0.0
         elif error > 15:
             limit = 1.0
@@ -68,6 +76,10 @@ class HeaterControl:
 
         self._power_percent = min(scaled, limit)
         self.hw.set_power(self._power_percent)
+
+
+    def get_power(self):
+        return self._power_percent
 
     def get_status(self):
         return {

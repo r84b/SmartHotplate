@@ -1,79 +1,83 @@
 from machine import I2C, Pin
-import hardware.sh1106
+from equipment.display.hardware import SH1106_I2C
 import time
 
-i2c = I2C(0, scl=Pin(21), sda=Pin(20))
-oled = hardware.sh1106.SH1106_I2C(128, 64, i2c)
-oled.rotate(True)
 
+class DisplayController:
+    def __init__(self):
+        self.i2c = I2C(0, scl=Pin(21), sda=Pin(20))
+        self.oled = SH1106_I2C(128, 64, self.i2c)
+        self.oled.rotate(True)
+        self.width = 128
+        self.height = 64
 
-def hello():
-    oled.fill(0)
-    
-    # Tekstwaarden
-    title = "Smart Heater"
-    author = "By Ramon"
-    
-    # Bereken breedtes om te centreren (128x64 scherm)
-    title_x = (128 - len(title)*8) // 2
-    author_x = (128 - len(author)*8) // 2
-    
-    # Titel groter maken door handmatige "bold"
-    for y_offset in range(3):  # Fade-in animatie
-        oled.fill(0)
-        oled.text(title, title_x, 16)
-        oled.text(author, author_x, 36)
-        oled.show()
-        time.sleep(0.1)
+    def splash(self):
+        self.oled.fill(0)
+        title = "Smart Heater"
+        author = "By Ramon"
+        title_x = (self.width - len(title) * 8) // 2
+        author_x = (self.width - len(author) * 8) // 2
 
-    # Simpele fade-in effect
-    for i in range(5):
-        oled.fill(0)
-        oled.text(title, title_x, 16)
-        oled.text(author, author_x, 36)
-        oled.show()
-        time.sleep(0.2)
+        for _ in range(3):
+            self.oled.fill(0)
+            self.oled.text(title, title_x, 16)
+            self.oled.text(author, author_x, 36)
+            self.oled.show()
+            time.sleep(0.1)
 
-    time.sleep(2)
+        for _ in range(5):
+            self.oled.fill(0)
+            self.oled.text(title, title_x, 16)
+            self.oled.text(author, author_x, 36)
+            self.oled.show()
+            time.sleep(0.2)
 
-    # Scroll effect naar boven
-    for shift in range(0, 48, 4):
-        oled.fill(0)
-        oled.text(title, title_x, 16 - shift)
-        oled.text(author, author_x, 36 - shift)
-        oled.show()
-        time.sleep(0.05)
+        time.sleep(2)
 
-    oled.fill(0)
-    oled.show()
+        for shift in range(0, 48, 4):
+            self.oled.fill(0)
+            self.oled.text(title, title_x, 16 - shift)
+            self.oled.text(author, author_x, 36 - shift)
+            self.oled.show()
+            time.sleep(0.05)
 
-    
-def update(temp_plate, temp_external, temp_target, power, rpm, target_rpm, wlan):
-    oled.fill(0)
-    
-    oled.text("Plate: {:.1f}C".format(temp_plate), 0, 0)
-    
-    if temp_external:
-        oled.text("Ext  : {:.1f}C".format(temp_external), 0, 10)
-    else:
-        oled.text("Ext  : --.-C", 0, 10)
-    
-    
-    oled.text("Target: {:.1f}C".format(temp_target), 0, 20)
-    oled.text(f"Rpm: {rpm:.0f}/{target_rpm:.0f}", 0, 40)
-    oled.text(f"{wlan.ifconfig()[0]}", 0, 50)
-    
-    # Power bar direct naast "Power:"
-    label_x = 0
-    label_y = 30
-    oled.text("Power:", label_x, label_y)
-    
-    bar_x = 50  # naast het woord "Power:"
-    bar_y = label_y
-    bar_width = int(power * 70)  # max 70 pixels breed
-    bar_height = 8
+        self.oled.fill(0)
+        self.oled.show()
 
-    oled.rect(bar_x, bar_y, 70, bar_height, 1)               # omkadering
-    oled.fill_rect(bar_x, bar_y, bar_width, bar_height, 1)   # vulling
+    def update(self, context):
+        self.oled.fill(0)
 
-    oled.show()
+        temp_plate = context.read_plate_temp()
+        temp_external = context.read_external_temp()
+        temp_target = context.get_target_temp()
+        rpm = context.get_rpm()
+        target_rpm = context.get_target_rpm()
+        power = context.get_power()
+        #wlan = context.wlan
+
+        self.oled.text("Plate: {:.1f}C".format(temp_plate), 0, 0)
+
+        if temp_external is not None:
+            self.oled.text("Ext  : {:.1f}C".format(temp_external), 0, 10)
+        else:
+            self.oled.text("Ext  : --.-C", 0, 10)
+    
+        self.oled.text("Target: {:.1f}C".format(temp_target), 0, 20)
+        self.oled.text("Rpm: {:>3}/{:<3}".format(int(rpm), int(target_rpm)), 0, 40)
+
+        #ip = wlan.ifconfig()[0] if wlan else "No WiFi"
+        #self.oled.text(ip, 0, 50)
+
+        label_x = 0
+        label_y = 30
+        self.oled.text("Power:", label_x, label_y)
+
+        bar_x = 50
+        bar_y = label_y
+        bar_width = int(min(max(power, 0.0), 1.0) * 70)
+        bar_height = 8
+
+        self.oled.rect(bar_x, bar_y, 70, bar_height, 1)
+        self.oled.fill_rect(bar_x, bar_y, bar_width, bar_height, 1)
+
+        self.oled.show()
