@@ -11,6 +11,7 @@ from interfaces.ui_state_manager import UIStateManager
 from interfaces.web_interface import WebInterface
 from services import settings 
 import asyncio
+import view
 
 # Phases
 from phases.heat_to import HeatTo
@@ -47,8 +48,8 @@ async def main():
     while True:
       engine.update()
       context.update_all()
-
-      display.update(context)
+      view.render(context, engine.current_phase)
+        
       await asyncio.sleep(0.5)
        
        
