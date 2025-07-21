@@ -10,7 +10,7 @@ from equipment.stirrer.control import StirrerController
 from interfaces.ui_state_manager import UIStateManager
 from interfaces.web_interface import WebInterface
 from services import settings 
-import asyncio
+import uasyncio as asyncio
 from view.view import View
 
 # Phases
@@ -25,18 +25,21 @@ stirrer = StirrerController(1, 22)
 display = DisplayController(scl_pin=21, sda_pin=20)  # or whatever your SH1106 wrapper is called
 context = ProcessContext(heater, stirrer, sensors, buzzer)
 view = View(display)
-web_interface = WebInterface(context)
+
 
 
 # Engine
 engine = PhaseEngine(context)
-engine.add_phase(HeatTo(context, 65.0))
-engine.add_phase(HoldTemp(context, 65.0, duration=180))
-engine.add_phase(StirFor(context, rpm=500, duration=300))
+#engine.add_phase(HeatTo(context, 65.0))
+#engine.add_phase(HoldTemp(context, 65.0, duration=180))
+#engine.add_phase(StirFor(context, rpm=500, duration=300))
+
+web_interface = WebInterface(context, engine)
 
 async def main():
     # Start WiFi connectie in de achtergrond
-    asyncio.create_task(web_interface.connect_wifi())
+    await web_interface.connect_wifi()
+    asyncio.create_task(web_interface.start())
 
     asyncio.create_task(sensors.run_loop())
     asyncio.create_task(heater.pwm_burst_loop())
@@ -47,11 +50,12 @@ async def main():
 
     # Execution loop
     while True:
-      engine.update()
       context.update_all()
+      engine.update()
+      
       view.render(context, engine.current_phase)
         
-      await asyncio.sleep(0.5)
+      await asyncio.sleep(0.05)
        
        
 asyncio.run(main())

@@ -12,16 +12,11 @@ class HeaterHardware:
     def off(self):
         self._triac.off()
 
-    async def burst_pwm_driver(self, power_reader, safety_reader, overtemp_limit, disable_callback):
+    async def burst_pwm_driver(self, power_reader, disable_callback):
         STEP = 0.1
         WINDOW = 1.0
         TOTAL = int(WINDOW / STEP)
         while True:
-            temp = safety_reader()
-            if temp >= overtemp_limit:
-                disable_callback("Overtemperature")
-                await asyncio.sleep(1)
-                continue
 
             power = power_reader()
             on_steps = int(power * TOTAL)

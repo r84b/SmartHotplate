@@ -1,15 +1,15 @@
 # view_models.py
 
-from phases.heat_to import HeatToPhase
-from phases.stir_for import StirForPhase
+from phases.heat_to import HeatTo
+from phases.stir_for import StirFor
 
 PHASE_VIEWS = {
-    HeatToPhase: lambda c: {
+    HeatTo: lambda c: {
         "line1": "Heating",
-        "line2": f"{c.heater.get_current_temp():.1f} / {c.heater.target_temp:.1f} °C"
+        "line2": f"{c.get_current_temp():.1f} / {c.get_target_temp():.1f} °C"
     },
-    StirForPhase: lambda c: {
+    StirFor: lambda c: {
         "line1": "Stirring",
-        "line2": f"{c.stirrer.get_current_rpm()} RPM"
+        "line2": f"{c.get_current_rpm()} RPM"
     }
 }

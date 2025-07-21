@@ -11,7 +11,7 @@ class HeatTo(Phase):
         self.context.heat_on()
 
     def update(self):
-        current = self.context.read_temp()
+        current = self.context.get_current_temp()
         if current is None:
             return PhaseResult.HOLD  # of alternatief, zie toelichting onder
 

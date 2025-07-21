@@ -2,6 +2,7 @@ from equipment.buzzer.control import BuzzerController
 from equipment.heater.control import HeaterController
 from equipment.sensor.control import SensorController
 from equipment.stirrer.control import StirrerController
+import time
 
 class ProcessContext:
     def __init__(self, heater: HeaterController, stirrer: StirrerController, sensors: SensorController, buzzer: BuzzerController):
@@ -9,6 +10,10 @@ class ProcessContext:
         self.stirrer = stirrer
         self.sensors = sensors
         self.buzzer = buzzer
+        
+        self._last_sensor = time.ticks_ms()
+        self._last_stirrer = self._last_sensor
+        self._last_heater = self._last_sensor
 
     # Heater interface
     def get_target_temp(self):
@@ -65,8 +70,8 @@ class ProcessContext:
         self.buzzer.target_reached()
 
     # Sensor interface
-    def read_temp(self):
-        return self.sensors.read_temp()
+    def get_current_temp(self):
+        return self.sensors.get_current_temp()
 
     def read_plate_temp(self):
         return self.sensors.read_plate_temp()
@@ -75,9 +80,22 @@ class ProcessContext:
         return self.sensors.read_external_temp()
 
     # System update
+
     def update_all(self):
-        self.sensors.update()
-        self.stirrer.update()
-        self.heater.update(self.read_temp(), self.read_plate_temp())
+        now = time.ticks_ms()
+
+        if time.ticks_diff(now, self._last_sensor) >= 50:
+            self.sensors.update()
+            self._last_sensor = now
+
+        if time.ticks_diff(now, self._last_stirrer) >= 500:
+            self.stirrer.update()
+            self._last_stirrer = now
+
+        if time.ticks_diff(now, self._last_heater) >= 1000:
+            t = self.get_current_temp()
+            p = self.read_plate_temp()
+            self.heater.update(t, p)
+            self._last_heater = now
         
         

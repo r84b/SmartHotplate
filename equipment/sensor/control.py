@@ -1,4 +1,5 @@
 from equipment.sensor.hardware import PT1000Sensor
+import uasyncio as asyncio
 
 class SensorController:
     def __init__(self, plate_pin=27, external_pin=28):
@@ -26,7 +27,7 @@ class SensorController:
             self.update()
             await asyncio.sleep_ms(interval_ms)
 
-    def read_temp(self):
+    def get_current_temp(self):
         return self.active_temp
 
     def read_plate_temp(self):

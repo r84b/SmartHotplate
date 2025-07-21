@@ -88,3 +88,4 @@ class DisplayController:
         self.oled.fill_rect(bar_x, bar_y, bar_width, bar_height, 1)
 
         self.oled.show()
+

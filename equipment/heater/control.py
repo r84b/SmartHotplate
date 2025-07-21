@@ -110,4 +110,4 @@ class HeaterController:
                 self.disable("No temperature rise")
 
     async def pwm_burst_loop(self):
-        await self.hw.burst_pwm_driver(lambda: self._power_percent, self._safety, self._overtemp, self.disable)
+        await self.hw.burst_pwm_driver(lambda: self._power_percent, self.disable)
