@@ -2,6 +2,9 @@ from phases.base import PhaseState, PhaseResult
 from phases.heat_to import HeatTo
 from phases.hold_temp import HoldTemp
 from phases.stir_for import StirFor
+from phases.hold_and_stir import HoldAndStir
+from phases.add_ingredient import AddIngredient
+from phases.cool_to import CoolTo
 
 
 class PhaseEngine:
@@ -14,6 +17,9 @@ class PhaseEngine:
             "heat_to": HeatTo,
             "hold_temp": HoldTemp,
             "stir_for": StirFor,
+            "add_ingredient": AddIngredient,
+            "hold_and_stir": HoldAndStir,
+            "cool_to": CoolTo
         }
         
     def add_phase_by_name(self, name, **params):
@@ -32,6 +38,10 @@ class PhaseEngine:
             self.current_phase.start()
         else:
             self.current_phase = None
+            
+    def clear(self):
+        self.current_phase = None
+        self.queue.clear()
 
     def update(self):
         if self.current_phase is None:
@@ -40,3 +50,4 @@ class PhaseEngine:
             result = self.current_phase.update()
             if result == PhaseResult.COMPLETE:
                 self.start_next()
+

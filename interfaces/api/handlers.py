@@ -69,8 +69,7 @@ async def handle_add_phase( writer, reader, headers, engine):
         body = await _read_body(reader, headers)
         
         data = json.loads(body)
-        
-        
+  
         name =  data.get("phase")
         params = data.get("params", {})
         
@@ -81,3 +80,20 @@ async def handle_add_phase( writer, reader, headers, engine):
     except Exception as e:
         print("POST error:", e)
         await _bad_request(writer)
+        
+async def handle_clear_phases(writer, reader, headers, engine):
+    try:
+        engine.clear()
+        await _json_response(writer, engine.current_phase)
+    except Exception as e:
+        print("POST error:", e)
+        await _bad_request(writer)
+        
+async def handle_next_phase(writer, reader, headers, engine):
+    try:
+        engine.start_next()
+        await _json_response(writer, engine.current_phase)
+    except Exception as e:
+        print("POST error:", e)
+        await _bad_request(writer)
+

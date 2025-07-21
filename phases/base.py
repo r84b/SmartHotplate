@@ -18,6 +18,9 @@ class Phase:
 
     def start(self):
         self.state = PhaseState.RUNNING
+        
+    def cancel(self):
+        raise NotImplementedError
 
     def update(self):
         raise NotImplementedError
