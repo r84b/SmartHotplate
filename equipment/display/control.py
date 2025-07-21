@@ -43,6 +43,13 @@ class DisplayController:
 
         self.oled.fill(0)
         self.oled.show()
+        
+    def set_lines(self, line1: str, line2: str):
+        self.oled.fill(0)
+        self.oled.text(line1, 0, 0)
+        self.oled.text(line2, 0, 16)
+        self.oled.show()
+
 
     def update(self, context):
         self.oled.fill(0)
